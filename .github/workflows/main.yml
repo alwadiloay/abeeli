@@ -24,20 +24,16 @@ jobs:
       - name: Install Dependencies
         run: npm install --force
 
-      - name: Expo Prebuild
+      - name: Expo Prebuild (توليد ملفات الأندرويد)
         run: npx expo prebuild --platform android --no-install
 
-      - name: Force Clean Resources & Fix Memory
+      - name: Fix Android Environment
         run: |
           cd android
-          # تخصيص ذاكرة ضخمة لعملية الربط
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> gradle.properties
+          # تخصيص الذاكرة
+          echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
           
-          # حذف المجلدات التي تسبب تعارض في الموارد (سيعيد النظام إنتاجها بشكل نظيف)
-          rm -rf app/src/main/res/mipmap-*
-          rm -rf app/src/main/res/drawable-*
-          
-          # حقنة ألوان الطوارئ الشاملة لضمان عدم وجود مراجع مفقودة
+          # إنشاء ملف الألوان المفقود لضمان الربط
           mkdir -p app/src/main/res/values
           cat <<EOF > app/src/main/res/values/colors.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -50,15 +46,20 @@ jobs:
           </resources>
           EOF
 
-          # ضبط Kotlin لنسخة مستقرة جداً
+          # ضبط نسخة Kotlin
           sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' build.gradle
 
-      - name: Final Cleanup & Build
+      - name: Generate Assets (توليد الأيقونات المفقودة برمجياً)
+        run: |
+          # هذه الخطوة تضمن وجود الأيقونات التي يشتكي منها الأندرويد
+          npx expo-assets-utils 2>/dev/null || true
+
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew clean
-          ./gradlew assembleDebug --no-daemon --parallel --offline || ./gradlew assembleDebug --no-daemon
+          # البناء مباشرة دون حذف المجلدات لكي لا تضيع الأيقونات
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

@@ -27,31 +27,41 @@ jobs:
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
 
-      - name: Optimize Engine & Memory
+      - name: Force Clean Resources & Fix Memory
         run: |
           cd android
-          # تخصيص ذاكرة أكبر للجاوا لتجنب خطأ Heap Space
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+          # تخصيص ذاكرة ضخمة لعملية الربط
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> gradle.properties
           
-          # إيقاف تشغيل Hermes مؤقتاً لضمان نجاح البناء في بيئة الذاكرة المحدودة
-          sed -i 's/hermesEnabled=.*/hermesEnabled=false/' gradle.properties
+          # حذف المجلدات التي تسبب تعارض في الموارد (سيعيد النظام إنتاجها بشكل نظيف)
+          rm -rf app/src/main/res/mipmap-*
+          rm -rf app/src/main/res/drawable-*
           
-          # إعدادات الموارد والألوان
+          # حقنة ألوان الطوارئ الشاملة لضمان عدم وجود مراجع مفقودة
           mkdir -p app/src/main/res/values
-          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="splashscreen_background">#1e293b</color><color name="iconBackground">#1e293b</color></resources>' > app/src/main/res/values/colors.xml
-          
-          # ضبط نسخ Kotlin المتوافقة
+          cat <<EOF > app/src/main/res/values/colors.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <color name="colorPrimary">#1e293b</color>
+              <color name="colorPrimaryDark">#0f172a</color>
+              <color name="colorAccent">#3b82f6</color>
+              <color name="iconBackground">#1e293b</color>
+              <color name="splashscreen_background">#1e293b</color>
+          </resources>
+          EOF
+
+          # ضبط Kotlin لنسخة مستقرة جداً
           sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' build.gradle
 
-      - name: Build APK (Debug Mode)
+      - name: Final Cleanup & Build
         run: |
           cd android
           chmod +x gradlew
-          # تنظيف وبناء بأقل استهلاك ممكن للموارد
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew clean
+          ./gradlew assembleDebug --no-daemon --parallel --offline || ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Abeeli-Pro-App
+          name: Abeeli-Final-App
           path: android/app/build/outputs/apk/debug/*.apk

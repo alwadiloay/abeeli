@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "android": {
-      "package": "com.abeeli.pro.native",
+      "package": "com.abeeli.pro.app",
       "versionCode": 1
     }
   }

@@ -27,10 +27,11 @@ jobs:
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
 
-      - name: Bundle JavaScript (أهم خطوة لفك الارتباط بسيرفر التطوير)
+      - name: Bundle JavaScript (النسخة المتوافقة مع Expo)
         run: |
           mkdir -p android/app/src/main/assets
-          npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+          # استخدام expo export لتوليد الكود بشكل متوافق تماماً
+          npx expo export:embed --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
 
       - name: Fix Android Resources
         run: |
@@ -49,11 +50,10 @@ jobs:
           EOF
           sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' build.gradle
 
-      - name: Build APK (Release-like Debug)
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
-          # تنظيف وبناء النسخة التي تحتوي على الكود مدمجاً
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK

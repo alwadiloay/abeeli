@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "عبيلي برو",
+    "slug": "abeeli-pro-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "android": {
+      "package": "com.abeeli.pro.native",
+      "versionCode": 1
+    }
+  }
+}

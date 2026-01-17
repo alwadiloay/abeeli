@@ -27,21 +27,31 @@ jobs:
       - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
 
-      - name: Fix Android Resources
+      - name: Optimize Engine & Memory
         run: |
-          mkdir -p android/app/src/main/res/values
-          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="splashscreen_background">#1e293b</color><color name="iconBackground">#1e293b</color></resources>' > android/app/src/main/res/values/colors.xml
-          echo "newArchEnabled=false" >> android/gradle.properties
-          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' android/build.gradle
+          cd android
+          # تخصيص ذاكرة أكبر للجاوا لتجنب خطأ Heap Space
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=512m" >> gradle.properties
+          
+          # إيقاف تشغيل Hermes مؤقتاً لضمان نجاح البناء في بيئة الذاكرة المحدودة
+          sed -i 's/hermesEnabled=.*/hermesEnabled=false/' gradle.properties
+          
+          # إعدادات الموارد والألوان
+          mkdir -p app/src/main/res/values
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="splashscreen_background">#1e293b</color><color name="iconBackground">#1e293b</color></resources>' > app/src/main/res/values/colors.xml
+          
+          # ضبط نسخ Kotlin المتوافقة
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' build.gradle
 
       - name: Build APK (Debug Mode)
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          # تنظيف وبناء بأقل استهلاك ممكن للموارد
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Abeeli-Pro-APK
+          name: Abeeli-Pro-App
           path: android/app/build/outputs/apk/debug/*.apk

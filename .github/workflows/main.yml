@@ -1,0 +1,47 @@
+name: Build Native Android App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Dependencies
+        run: npm install --force
+
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform android --no-install
+
+      - name: Fix Android Resources
+        run: |
+          mkdir -p android/app/src/main/res/values
+          echo '<?xml version="1.0" encoding="utf-8"?><resources><color name="splashscreen_background">#1e293b</color><color name="iconBackground">#1e293b</color></resources>' > android/app/src/main/res/values/colors.xml
+          echo "newArchEnabled=false" >> android/gradle.properties
+          sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' android/build.gradle
+
+      - name: Build APK (Debug Mode)
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Abeeli-Pro-APK
+          path: android/app/build/outputs/apk/debug/*.apk

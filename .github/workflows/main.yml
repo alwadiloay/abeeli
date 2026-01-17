@@ -24,16 +24,18 @@ jobs:
       - name: Install Dependencies
         run: npm install --force
 
-      - name: Expo Prebuild (توليد ملفات الأندرويد)
+      - name: Expo Prebuild
         run: npx expo prebuild --platform android --no-install
 
-      - name: Fix Android Environment
+      - name: Bundle JavaScript (أهم خطوة لفك الارتباط بسيرفر التطوير)
+        run: |
+          mkdir -p android/app/src/main/assets
+          npx react-native bundle --platform android --dev false --entry-file node_modules/expo/AppEntry.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res
+
+      - name: Fix Android Resources
         run: |
           cd android
-          # تخصيص الذاكرة
           echo "org.gradle.jvmargs=-Xmx4096m" >> gradle.properties
-          
-          # إنشاء ملف الألوان المفقود لضمان الربط
           mkdir -p app/src/main/res/values
           cat <<EOF > app/src/main/res/values/colors.xml
           <?xml version="1.0" encoding="utf-8"?>
@@ -45,24 +47,17 @@ jobs:
               <color name="splashscreen_background">#1e293b</color>
           </resources>
           EOF
-
-          # ضبط نسخة Kotlin
           sed -i 's/kotlinVersion = .*/kotlinVersion = "1.8.10"/' build.gradle
 
-      - name: Generate Assets (توليد الأيقونات المفقودة برمجياً)
-        run: |
-          # هذه الخطوة تضمن وجود الأيقونات التي يشتكي منها الأندرويد
-          npx expo-assets-utils 2>/dev/null || true
-
-      - name: Build APK
+      - name: Build APK (Release-like Debug)
         run: |
           cd android
           chmod +x gradlew
-          # البناء مباشرة دون حذف المجلدات لكي لا تضيع الأيقونات
+          # تنظيف وبناء النسخة التي تحتوي على الكود مدمجاً
           ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Abeeli-Final-App
+          name: Abeeli-Final-Standalone
           path: android/app/build/outputs/apk/debug/*.apk
